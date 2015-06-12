@@ -232,6 +232,7 @@ while True:
 		lcd.clear()
 		lcd.message('      Menu')
 		Menu=True
+		loadParameters()
 		time.sleep(0.5)
 		i=0
 		NameParams=('  Grid Size X','  Grid Size Y','  Resolution X', '  Resolution Y', '     ZigZag','    Log mode')
