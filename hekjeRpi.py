@@ -113,13 +113,13 @@ def displayMenu(i):
 
 def getU(voltage):
 		
-		u=10
+	u=10
 	return u
 
 		
 def getI(current):
 
-		i=5
+	i=5
 	return i
 
 def makeR(u,i):
