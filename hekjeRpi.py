@@ -111,14 +111,12 @@ def displayMenu(i):
 	lcd.clear()
 	lcd.message('%s\n\x03%s\x02'%(NameParams[i],lcdVal))
 
-def getU(voltage):
-		
+def getU():
 	u=10
 	return u
 
 		
-def getI(current):
-
+def getI():
 	i=5
 	return i
 
