@@ -4,30 +4,67 @@ lcd=LCD.Adafruit_CharLCDPlate()
 lcd.clear()
 lcd.message('  Resistivity\n     Meter');
 
+from ABE_ADCPi import ADCPi
+from ABE_helpers import ABEHelpers
 import time
 import math
 import sys,os
 import datetime
 import numpy as np
 
+def initADC():
+	i2c_helper = ABEHelpers()
+	bus = i2c_helper.get_smbus()
+	adc = ADCPi(bus, 0x68, 0x69, 12)
 
 def loadParameters():
 	parameters=[0,0,0,0,0,0,0]
 	file = open("/home/pi/hekje/config.txt", "r")
-	parameters[0]=float(file.readline());#xsize
-	parameters[1]=float(file.readline());#ysize
-	parameters[2]=float(file.readline());#xstep
-	parameters[3]=float(file.readline());#ystep
-	parameters[4]=int(file.readline());#zigzag (1/0)
-	parameters[5]=int(file.readline());#mode Log
-	parameters[6]=int(file.readline());#grid Indent
+	for line in file:
+		a=file.readline().split("=")
+		if (a[0]=="X_SIZE"):
+			parameters[0]=float(a[1]);
+		elif (a[0]=="Y_SIZE"):
+			parameters[1]=float(a[1]);
+		elif (a[0]=="X_SPACING"):
+			parameters[2]=float(a[1]);
+		elif (a[0]=="Y_SPACING"):
+			parameters[3]=float(a[1]);
+		elif (a[0]=="ZIGZAG"):
+			if(a[1]=="YES"):
+				parameters[4]=1;
+			else:
+				parameters[4]=0;
+		elif (a[0]=="LOGGING_MODE"):
+			if(a[1]=="MANUAL"):
+				parameters[5]=0;
+			elif(a[1]=="SLOW"):
+				parameters[5]=1;
+			elif(a[1]=="MEDIUM"):
+				parameters[5]=2;
+			elif(a[1]=="FAST"):
+				parameters[5]=3;
+		elif (a[0]=="GRID_INDENT"):
+			parameters[6]=int(a[1]);
 	file.close();
 	return (parameters)
 
 def saveParameters():
 	file = open("/home/pi/hekje/config.txt", "w+")
-	print('%d\n%d\n%.2f\n%.2f\n%d' %(parameters[0],parameters[1],parameters[2],parameters[3],parameters[4]))
-	file.write('%d\n%d\n%.2f\n%.2f\n%d\n%d\n%d' %(parameters[0],parameters[1],parameters[2],parameters[3],parameters[4],parameters[5],parameters[6]))
+	if parameter[4]==0:
+		zigzag="NO"
+	elif parameter[4]==1:
+		zigzag="YES"
+	if parameter[5]==0:
+		logging_mode="MANUAL"
+	elif parameter[5]==1:
+		logging_mode="SLOW"
+	elif parameter[5]==2:
+		logging_mode="MEDIUM"
+	elif parameter[5]==3:
+		logging_mode="FAST"
+	print('X_SIZE=%d\nY_SIZE=%d\nX_SPACING=%.2f\nY_SPACING=%.2f\nZIGZAG=%s\nLOGGING_MODE=%s\nGRID_INDENT=%d' %(parameters[0],parameters[1],parameters[2],parameters[3],zigzag,logging_mode,parameters[6]))
+	file.write('X_SIZE=%d\nY_SIZE=%d\nX_SPACING=%.2f\nY_SPACING=%.2f\nZIGZAG=%s\nLOGGING_MODE=%s\nGRID_INDENT=%d' %(parameters[0],parameters[1],parameters[2],parameters[3],zigzag,logging_mode,parameters[6]))
 	file.close();
 
 #create the special characters
@@ -36,48 +73,67 @@ lcd.create_char(2, [0,8,12,14,12,8,0,0])#right
 lcd.create_char(3, [0,2,6,14,6,2,0,0])#left
 lcd.create_char(4, [0,0,31,14,4,0,0,0])#bottom
 
+def center(s):
+	if len(s)<17:
+		if (len(s)%2==1):
+			numberSpaces=7-len(s)/2
+		else:
+			numberSpaces=8-len(s)/2
+	
+		for i in range(0,numberSpaces):
+			s=" " + s
+	else:
+		print('string too long')
+		
+	return s
+	
+	
 
-def connectSensors():
-	errmsg=YRefParam()
-	#Get access to your device, connected locally on USB for instance
-	YAPI.RegisterHub("usb",errmsg)
+def displayMenu(i):
+	NameParams=('  Grid Size X','  Grid Size Y','  Resolution X', '  Resolution Y', '     ZigZag','    Log mode')
+	if (i==4 and parameters[i]==0):
+		lcdVal=center('No')
+	elif (i==4 and parameters[i]==1):
+		lcdVal=center('Yes')
+	elif (i==2 or i==3):
+		lcdVal=center('%.2f'%parameters[i])
+	elif (i==0 or i==1):
+		lcdVal=center('%d'%parameters[i])
+	elif (i==5):
+		if(parameters[i]==0):
+			lcdVal=center('Manual')
+		elif(parameters[i]==1):
+			lcdVal=center('Auto - slow')
+		elif(parameters[i]==2):
+			lcdVal=center('Auto - medium')
+		elif(parameters[i]==3):
+			lcdVal=center('Auto - fast')					
+	lcd.clear()
+	lcd.message('%s\n\x03%s\x02'%(NameParams[i],lcdVal))
 
 def getU(voltage):
-	if voltage.isOnline():
-		u=voltage.get_currentValue()
-	else:
+		
 		u=10
 	return u
 
 		
 def getI(current):
-	if current.isOnline():
-		i=current.get_currentValue()
-	else:
+
 		i=5
 	return i
 
 def makeR(u,i):
 	if i!=0:
-		r=u/i * 2*math.pi
+		r=u/i
 	else:
 		r=0.0
 	return r
 
-def makeLast10(last10,r):
-	if len(last10)<10:
-		last10=np.append(last10,r)
-	else:
-		last10=np.append(last10[1:],r);
-	return last10;
 
 #Init:
 
-
-last10=np.array([makeR(getU(voltage),getI(current)),makeR(getU(voltage),getI(current))])
-lcd.set_color(1,0,0)
 lcd.clear()
-lcd.message('Start new grid \x02\nMenu           \x03')
+lcd.message('New grid \x02\nMenu           \x03')
 while True:
 	if lcd.is_pressed(LCD.RIGHT):
 		parameters[6]+=1
@@ -189,87 +245,41 @@ while True:
 					i=0
 				else:
 					i+=1
-				lcd.clear()
-				if (i==4 and parameters[i]==1):
-					lcdVal='      Yes      '
-				elif (i==4 and parameters[i]==0):
-					lcdVal='      No     '
-				elif (i==2 or i==3):
-					lcdVal=('    %.2f    '%parameters[i])
-				elif (i==0 or i==1):
-					lcdVal=('    %d    '%parameters[i])
-				elif (i==5):
-					if(parameters[i]==0):
-						lcdVal='    Manual    '
-					elif(parameters[i]==1):
-						lcdVal='  Auto - slow '
-					elif(parameters[i]==2):
-						lcdVal=' Auto - medium'
-					elif(parameters[i]==3):
-						lcdVal='  Auto - fast '			
-				lcd.clear()
-				lcd.message('%s\n\x03%s\x02'%(NameParams[i],lcdVal))
+				displayMenu(i)
 			elif lcd.is_pressed(LCD.LEFT):
 				if (i==4 and parameters[i]==1):
 					parameters[i]=0
-					lcdVal='      No      '
 				elif (i==4 and parameters[i]==0):
 					parameters[i]=1
-					lcdVal='      Yes     '
 				elif (i==2 or i==3 and parameters[i]>0):
 					parameters[i]-=0.25
-					lcdVal=('    %.2f    '%parameters[i])
 				elif (i==0 or i==1):
 					parameters[i]-=1
-					lcdVal=('    %d    '%parameters[i])
 				elif (i==5):
 					if (parameters[i]==0):
 						parameters[i]=3
 					else:
-						parameters[i]-=1
-					if(parameters[i]==0):
-						lcdVal='    Manual    '
-					elif(parameters[i]==1):
-						lcdVal='  Auto - slow '
-					elif(parameters[i]==2):
-						lcdVal=' Auto - medium'
-					elif(parameters[i]==3):
-						lcdVal='  Auto - fast '							
-				lcd.clear()
-				lcd.message('%s\n\x03%s\x02'%(NameParams[i],lcdVal))
+						parameters[i]-=1			
+				displayMenu(i)
 			elif lcd.is_pressed(LCD.RIGHT):
 				if (i==4 and parameters[i]==1):
 					parameters[i]=0
-					lcdVal='      No      '
 				elif (i==4 and parameters[i]==0):
 					parameters[i]=1
-					lcdVal='      Yes     '
 				elif (i==2 or i==3):
 					parameters[i]+=0.25
-					lcdVal=('    %.2f    '%parameters[i])	
 				elif (i==0 or i==1):
 					parameters[i]+=1
-					lcdVal=('    %d    '%parameters[i])
 				elif (i==5):
 					if (parameters[i]==3):
 						parameters[i]=0
 					else:
-						parameters[i]+=1
-					if(parameters[i]==0):
-						lcdVal='    Manual    '
-					elif(parameters[i]==1):
-						lcdVal='  Auto - slow '
-					elif(parameters[i]==2):
-						lcdVal=' Auto - medium'
-					elif(parameters[i]==3):
-						lcdVal='  Auto - fast '											
-				lcd.clear()
-				lcd.message('%s\n\x03%s\x02'%(NameParams[i],lcdVal))
+						parameters[i]+=1										
 			elif lcd.is_pressed(LCD.SELECT):
 				saveParameters()
 				Menu=False
 				lcd.clear()
-				lcd.message('Start new grid \x02\nMenu           \x03')
+				lcd.message('New grid \x02\nMenu           \x03')
 				
 	elif lcd.is_pressed(LCD.SELECT):
 		time.sleep(2)
