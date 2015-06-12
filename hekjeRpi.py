@@ -20,8 +20,10 @@ def initADC():
 def loadParameters():
 	parameters=[0,0,0,0,0,0,0]
 	file = open("/home/pi/hekje/config.txt", "r")
-	for line in file:
-		a=file.readline().split("=")
+	while True:
+		line = file.readline()
+    	if not line: break
+		a=line.split("=")
 		if (a[0]=="X_SIZE"):
 			parameters[0]=float(a[1]);
 		elif (a[0]=="Y_SIZE"):
