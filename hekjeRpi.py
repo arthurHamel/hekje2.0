@@ -73,22 +73,7 @@ def makeLast10(last10,r):
 
 #Init:
 
-parameters=loadParameters()
-connectSensors()
-voltage = YGenericSensor.FindGenericSensor("RXMVOLT1-364E6.genericSensor1")
-current = YGenericSensor.FindGenericSensor("RXMVOLT1-364F7.genericSensor1")
-if (current.isOnline()):
-	a='Current ok -'
-else:
-	a='Amp not found -'
-if (voltage.isOnline()):
-	b=' Voltage ok '
-else:
-	b=' Volt not found '
-print(a+b)
-lcd.clear()
-lcd.message(a+'\n'+b)
-time.sleep(0.7)
+
 last10=np.array([makeR(getU(voltage),getI(current)),makeR(getU(voltage),getI(current))])
 lcd.set_color(1,0,0)
 lcd.clear()
