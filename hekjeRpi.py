@@ -4,8 +4,8 @@ lcd=LCD.Adafruit_CharLCDPlate()
 lcd.clear()
 lcd.message('  Resistivity\n     Meter');
 
-from ABE_ADCPi import ADCPi
-from ABE_helpers import ABEHelpers
+#from ABE_ADCPi import ADCPi
+#from ABE_helpers import ABEHelpers
 import time
 import math
 import sys,os
